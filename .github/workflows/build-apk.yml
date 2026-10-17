@@ -1,0 +1,53 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Create Web Zip
+        run: |
+          zip -r web-app.zip . -x "*.git*" "*node_modules*" ".github*"
+
+      - name: Install Cordova
+        run: |
+          npm install -g cordova
+
+      - name: Create Cordova Project
+        run: |
+          cordova create myapp com.example.myapp "My App"
+          rm -rf myapp/www/*
+          cp -r . myapp/www/ 2>/dev/null || true
+          cd myapp
+          cordova platform add android@12.0.0
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Build Debug APK
+        run: |
+          cd myapp
+          cordova build android --debug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: myapp/platforms/android/app/build/outputs/apk/debug/app-debug.apk
